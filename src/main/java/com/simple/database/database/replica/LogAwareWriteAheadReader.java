@@ -27,7 +27,7 @@ public class LogAwareWriteAheadReader {
     }
 
 
-    public void reloadState(StateReloader stateReloader) {
+    public void reloadStateFromFile(StateReloader stateReloader) {
         try(BufferedReader reader = new BufferedReader(new FileReader(walFileName))){
             String line = null;
             while((line = reader.readLine()) != null){
@@ -39,5 +39,4 @@ public class LogAwareWriteAheadReader {
             System.exit(0);
         }
     }
-
 }

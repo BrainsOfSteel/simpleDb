@@ -3,7 +3,6 @@ package com.simple.database.database.replica.engine;
 import com.simple.database.database.StateReloader;
 import com.simple.database.database.replica.LogAwareWriteAheadReader;
 import com.simple.database.database.utils.Util;
-
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DatabaseEngine implements StateReloader {
@@ -19,7 +18,7 @@ public class DatabaseEngine implements StateReloader {
         if(databaseEngine == null){
             databaseEngine = new DatabaseEngine(logAwareWriteAheadReader);
         }
-        logAwareWriteAheadReader.reloadState(databaseEngine);
+        logAwareWriteAheadReader.reloadStateFromFile(databaseEngine);
         return databaseEngine;
     }
 

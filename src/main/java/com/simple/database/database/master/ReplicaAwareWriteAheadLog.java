@@ -9,7 +9,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.io.BufferedReader;
 
 import com.simple.database.database.StateReloader;
+import com.simple.database.database.replica.request.ReplicaRequest;
 import com.simple.database.database.utils.Util;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestTemplate;
 
 public class ReplicaAwareWriteAheadLog {
     private String writeAheadFileName;
@@ -18,6 +23,7 @@ public class ReplicaAwareWriteAheadLog {
     private ConcurrentHashMap<String, Integer> replicaHostVsWALOffset = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, String> replicaHostVsFileName = new ConcurrentHashMap<>();
     private final int maxBatchSize = 10;
+    private RestTemplate restTemplate = new RestTemplate();
 
     public void addReplica(String replicaHost, String fileName){
         if(replicaHostVsWALOffset.containsKey(replicaHost)){
@@ -79,6 +85,11 @@ public class ReplicaAwareWriteAheadLog {
     }
 
     private void sendToTheReplicaHost(int currentSeqNumber, int endNumber, List<String> lines) {
+        ReplicaRequest replicaRequest = new ReplicaRequest(lines, currentSeqNumber, endNumber);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<ReplicaRequest> request = new HttpEntity<>(replicaRequest, httpHeaders);
+        restTemplate.postForObject("http://localhost:8081/replica/addKey", request, String.class);
         System.out.println("seqNumber =" + currentSeqNumber + " endNumber = "+endNumber + " size =" + lines.size() + " lines = " + lines);
     }
 
