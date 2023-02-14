@@ -26,6 +26,10 @@ public class DatabaseEngine implements StateReloader{
         return databaseEngine;
     }
 
+    public void addReplica(String restEndPoint, String fileName){
+        replicaAwareWriteAheadLog.addReplica(restEndPoint, fileName);
+    }
+
     public void reloadState(String logLine){
         Util.reloadState(logLine, keyValuePair);
     }

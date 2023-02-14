@@ -1,5 +1,6 @@
 package com.simple.database.database.controller;
 
+import com.simple.database.database.request.AddReplicaRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,21 @@ public class MainController {
             return new ResponseEntity<>(e.getCause(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
         
+        return new ResponseEntity<>("Added successfully", HttpStatus.CREATED);
+    }
+
+    @PostMapping(value = "/addReplica", consumes = "application/json")
+    public ResponseEntity<?> addReplica(@RequestBody AddReplicaRequest request){
+        if(databaseMode.getModeEnum() != ModeEnum.MASTER){
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+        try{
+            databaseService.addReplica(request.getRestEndPoint(), request.getFileName());
+        }catch(Exception e){
+            e.printStackTrace();
+            return new ResponseEntity<>(e.getCause(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
         return new ResponseEntity<>("Added successfully", HttpStatus.CREATED);
     }
 

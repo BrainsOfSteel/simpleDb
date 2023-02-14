@@ -16,6 +16,10 @@ public class DatabaseService {
         databaseEngine.delKey(key);
     }
 
+    public void addReplica(String restEndPoint, String fileName){
+        databaseEngine.addReplica(restEndPoint, fileName);
+    }
+
     public String getValue(String key){
         return databaseEngine.getValue(key);
     }
