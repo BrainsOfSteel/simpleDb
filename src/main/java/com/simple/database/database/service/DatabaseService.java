@@ -23,4 +23,8 @@ public class DatabaseService {
     public String getValue(String key){
         return databaseEngine.getValue(key);
     }
+
+    public void cleanupWriteAheadLog() throws Exception{
+        databaseEngine.cleanupWriteAheadLog();
+    }
 }

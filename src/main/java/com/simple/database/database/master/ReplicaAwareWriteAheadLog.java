@@ -7,9 +7,14 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ReplicaAwareWriteAheadLog {
     private String writeAheadFileName;
@@ -17,16 +22,18 @@ public class ReplicaAwareWriteAheadLog {
     private FileWriter fileWriter;
     private ConcurrentHashMap<String, String> replicaHostVsFileName = new ConcurrentHashMap<>();
     private final int maxBatchSize = 10;
+    private AtomicLong countRunningReplicaThreads = new AtomicLong(0);
+    private AtomicBoolean cleanupSignal = new AtomicBoolean(false);
     private ExecutorService executorService;
 
+    //Todo: Added to make sure that it does not interfere with the cleanup of WAL
     public void addReplica(String replicaHost, String fileName){
         if(replicaHostVsFileName.containsKey(replicaHost)){
             return;
         }
         else{
             replicaHostVsFileName.put(replicaHost, fileName);
-            SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(fileName, writeAheadFileName, replicaHost, maxBatchSize);
-            executorService.submit(syncReplicasRunnable);
+            startReplicaTask(replicaHost, fileName);
         }
     }
 
@@ -71,5 +78,52 @@ public class ReplicaAwareWriteAheadLog {
             System.out.println("Exiting application...unable to build state from log. wipe out and restart");
             System.exit(0);
         }
+      }
+
+    //Only to be called from DatabaseEngine cleanup
+    public void stopReplicaThreadsAndCleanup() throws Exception {
+        cleanupSignal.getAndSet(true);
+        long count = -1L;
+        while(countRunningReplicaThreads.get() > 0){
+            count++;
+            if(count % 200 == 0){
+                System.out.println("Stopping replica threads");
+            }
+        }
+        try {
+            fileWriter.flush();
+            fileWriter.close();
+            Files.deleteIfExists(Path.of(writeAheadFileName));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        System.out.println("Stopped replica Threads");
+    }
+
+    //Only to be called from DatabaseEngine cleanup
+    public void restartReplicaThreads() throws Exception {
+        //Reset all the parameters
+        try {
+            fileWriter = new FileWriter(writeAheadFileName,true);
+            cleanupSignal.getAndSet(false);
+            countRunningReplicaThreads.getAndSet(0L);
+            for (Map.Entry<String, String> entry : replicaHostVsFileName.entrySet()) {
+                startReplicaTask(entry.getKey(), entry.getValue());
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            throw new Exception("Unable to clean restart the write ahead log writer will abort");
+        }
+    }
+
+    private void startReplicaTask(String replicaHost, String fileName){
+        SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(fileName, writeAheadFileName, replicaHost, maxBatchSize, countRunningReplicaThreads, cleanupSignal);
+        executorService.submit(syncReplicasRunnable);
+        countRunningReplicaThreads.incrementAndGet();
+    }
+
+    public String getWriteAheadFileName() {
+        return writeAheadFileName;
     }
 }

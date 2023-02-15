@@ -63,6 +63,20 @@ public class MainController {
         return new ResponseEntity<>("value = "+value, HttpStatus.OK);
     }
 
+    @GetMapping("/cleanupWriteAheadLog")
+    public ResponseEntity<?> cleanupWriteAheadLog(){
+        if(databaseMode.getModeEnum() != ModeEnum.MASTER){
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        try {
+            databaseService.cleanupWriteAheadLog();
+        }catch (Exception e){
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @DeleteMapping("/delKey/{key}")
     public ResponseEntity<?> delKey(@PathVariable("key") String key){
         if(databaseMode.getModeEnum() == ModeEnum.REPLICA){

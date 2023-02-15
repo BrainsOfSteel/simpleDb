@@ -10,8 +10,13 @@ import org.springframework.web.client.RestTemplate;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SyncReplicasRunnable implements Runnable{
 
@@ -22,19 +27,25 @@ public class SyncReplicasRunnable implements Runnable{
     private RestTemplate restTemplate;
     private int bufferTime = 300;//in ms
     private int MILLIS_TO_NANOS = 1000000;
+    private AtomicLong countRunningReplicaThreads;
+    private AtomicBoolean cleanupSignal;
 
-    public SyncReplicasRunnable(String replicaStateFileName, String writeAheadFileName, String replicaHostDetails, int maxBatchSize) {
+    public SyncReplicasRunnable(String replicaStateFileName, String writeAheadFileName, String replicaHostDetails, int maxBatchSize, AtomicLong countRunningReplicaThreads,
+                                AtomicBoolean cleanupSignal) {
         this.replicaStateFileName = replicaStateFileName;
         this.writeAheadFileName = writeAheadFileName;
         this.maxBatchSize = maxBatchSize;
         this.restTemplate = new RestTemplate();
         this.replicaEndPointDetails = replicaHostDetails;
+        this.countRunningReplicaThreads = countRunningReplicaThreads;
+        this.cleanupSignal = cleanupSignal;
     }
 
     @Override
     public void run() {
         int currentSeqNumber = 0;
         int endLineNumber = -1;
+        boolean cleanupSignalReceived = false;
         try (FileWriter fw = new FileWriter(replicaStateFileName, true)) {
             try (BufferedReader br = new BufferedReader(new FileReader(replicaStateFileName))) {
                 String line = null;
@@ -56,6 +67,11 @@ public class SyncReplicasRunnable implements Runnable{
                 }
 
                 while (true) {
+                    if(cleanupSignal.get()){
+                        cleanupSignalReceived = true;
+                        System.out.println("Stopping this thread " + Thread.currentThread().getName() + " for clean up of WAL of master");
+                        break;
+                    }
                     List<String> lines = new ArrayList<>();
                     int collectedLines = 0;
                     boolean flag = false;
@@ -71,7 +87,7 @@ public class SyncReplicasRunnable implements Runnable{
                     if(!flag){
                         continue;
                     }
-                    System.out.println("condition met" + (collectedLines < maxBatchSize) +" line = " + line + "timeElapsed = "+ timeElapsed);
+                    System.out.println("condition met" + (collectedLines < maxBatchSize) +" line = " + line + " timeElapsed = "+ timeElapsed);
                     currentSeqNumber++;
                     endLineNumber = endLineNumber < 0 ? collectedLines : endLineNumber  + collectedLines;
                     sendToTheReplicaHost(currentSeqNumber, endLineNumber, lines);
@@ -79,7 +95,21 @@ public class SyncReplicasRunnable implements Runnable{
                     fw.flush();
                 }
             }
+            countRunningReplicaThreads.decrementAndGet();
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+        cleanupIfRequired(cleanupSignalReceived);
+    }
+
+    private void cleanupIfRequired(boolean cleanupSignalReceived) {
+        if(!cleanupSignalReceived){
+            return;
+        }
+        try{
+            Files.deleteIfExists(Path.of(replicaStateFileName));
+        }catch (Exception e){
+            System.out.println("Unable to delete the state file. Not a catatrophic failure");
             e.printStackTrace();
         }
     }

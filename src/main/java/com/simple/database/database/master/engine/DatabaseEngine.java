@@ -1,10 +1,16 @@
 package com.simple.database.database.master.engine;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.simple.database.database.master.ReplicaAwareWriteAheadLog;
 import com.simple.database.database.StateReloader;
 import com.simple.database.database.utils.Util;
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 public class DatabaseEngine implements StateReloader{
 
@@ -26,7 +32,7 @@ public class DatabaseEngine implements StateReloader{
         return databaseEngine;
     }
 
-    public void addReplica(String restEndPoint, String fileName){
+    public synchronized void addReplica(String restEndPoint, String fileName){
         replicaAwareWriteAheadLog.addReplica(restEndPoint, fileName);
     }
 
@@ -54,6 +60,36 @@ public class DatabaseEngine implements StateReloader{
 
     private String getDelKey(String op, String key){
         return op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER;
+    }
+
+    public synchronized void cleanupWriteAheadLog() throws Exception{
+        String walTempFile = "walMasterTemp.log";
+        try(FileWriter fw = new FileWriter(walTempFile)){
+            for(Map.Entry<String, String> entry : keyValuePair.entrySet()){
+                String appendLogLine = getAddKey(Util.ADD_OPERATION, entry.getKey(), entry.getValue());
+                fw.write(appendLogLine + Util.ENTRY_DELIMITER);
+                fw.flush();
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            try {
+                Files.deleteIfExists(Path.of(walTempFile));
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            throw new Exception("Unable to create new journal file");
+        }
+
+        //Everything below is non-recoverable, shutdown the database and do manual cleanup
+        try {
+            replicaAwareWriteAheadLog.stopReplicaThreadsAndCleanup();
+            Files.move(Path.of(walTempFile), Path.of(replicaAwareWriteAheadLog.getWriteAheadFileName()), ATOMIC_MOVE);
+            replicaAwareWriteAheadLog.restartReplicaThreads();
+        }catch (Exception e){
+            e.printStackTrace();
+            System.out.println("Something bad has happened, irrecoverable failure, manually clean up the walLogs an restart the application");
+            System.exit(0);
+        }
     }
 
     public synchronized void delKey(String key){
