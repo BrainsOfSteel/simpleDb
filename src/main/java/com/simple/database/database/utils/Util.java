@@ -12,12 +12,12 @@ public class Util {
     public static void reloadState(String logLine, ConcurrentHashMap<String, String> keyValuePair){
         String[] line = logLine.split(KEY_VALUE_DELIMITER);
         if(line[line.length-1].charAt(0) == CHECKSUM_CHARACTER ){
-            if(line[0].equals(ADD_OPERATION)){
+            if(line[1].equals(ADD_OPERATION)){
                 String key = line[1];
                 String value = line[2];
                 keyValuePair.put(key, value);
             }
-            else if(line[0].equals(DEL_OPERATION)){
+            else if(line[1].equals(DEL_OPERATION)){
                 String key = line[1];
                 if(!keyValuePair.containsKey(key)){
                     System.out.println("Key not found in DB. why ? "+ logLine +" key = "+key);

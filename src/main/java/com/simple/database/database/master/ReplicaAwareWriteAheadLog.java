@@ -20,11 +20,14 @@ public class ReplicaAwareWriteAheadLog {
     private String writeAheadFileName;
     private static ReplicaAwareWriteAheadLog replicaAwareWriteAheadLog;
     private FileWriter fileWriter;
+    private FileWriter versionFileWriter;
     private ConcurrentHashMap<String, String> replicaHostVsFileName = new ConcurrentHashMap<>();
     private final int maxBatchSize = 10;
     private AtomicLong countRunningReplicaThreads = new AtomicLong(0);
     private AtomicBoolean cleanupSignal = new AtomicBoolean(false);
     private ExecutorService executorService;
+    private String versionFileName;
+    private int versionNumber;
 
     //Todo: Added to make sure that it does not interfere with the cleanup of WAL
     public void addReplica(String replicaHost, String fileName){
@@ -33,25 +36,56 @@ public class ReplicaAwareWriteAheadLog {
         }
         else{
             replicaHostVsFileName.put(replicaHost, fileName);
-            startReplicaTask(replicaHost, fileName);
+            startReplicaTask(versionNumber, replicaHost, fileName);
         }
     }
 
-    private ReplicaAwareWriteAheadLog(String fileName) {
+    public int getVersionNumber(){
+        return versionNumber;
+    }
+
+    private void initialiseVersionNumber() throws Exception{
+        String line = null;
+        if(Files.exists(Path.of(versionFileName))){
+            try(BufferedReader versionFileReader = new BufferedReader(new FileReader(versionFileName))){
+                line = versionFileReader.readLine();
+                String[] versionArr = line.split(""+Util.CHECKSUM_CHARACTER);
+                versionNumber = Integer.parseInt(versionArr[0]);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                throw e;
+            }
+        }
+        else{
+            try(FileWriter fileWriter = new FileWriter(versionFileName)){
+                versionNumber = 0;
+                fileWriter.write(versionNumber+Util.CHECKSUM_CHARACTER+Util.ENTRY_DELIMITER);
+                fileWriter.flush();
+            }catch (Exception e){
+                e.printStackTrace();
+                throw e;
+            }
+        }
+    }
+
+    private ReplicaAwareWriteAheadLog(String fileName, String versionFileName) {
         try {
+            this.versionFileName = versionFileName;
             this.writeAheadFileName = fileName;
             fileWriter = new FileWriter(fileName, true);
+            initialiseVersionNumber();
             executorService = Executors.newCachedThreadPool();
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Unable to initialise the file writer.....exiting");
             e.printStackTrace();
             System.exit(0);
         }
     }  
        
-    public static ReplicaAwareWriteAheadLog getInstance(String fileName) {      
+    public static ReplicaAwareWriteAheadLog getInstance(String fileName, String versionFileName) {
         if(replicaAwareWriteAheadLog == null){
-            replicaAwareWriteAheadLog  = new ReplicaAwareWriteAheadLog(fileName);
+            replicaAwareWriteAheadLog  = new ReplicaAwareWriteAheadLog(fileName, versionFileName);
         }
         return replicaAwareWriteAheadLog;
     } 
@@ -101,6 +135,17 @@ public class ReplicaAwareWriteAheadLog {
         System.out.println("Stopped replica Threads");
     }
 
+    public void incrementVersionNumber() throws Exception{
+        try(FileWriter fw = new FileWriter(versionFileName)){
+            versionNumber++;
+            fw.write(versionNumber + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER);
+            fw.flush();
+        }catch (Exception e){
+            e.printStackTrace();
+            throw new Exception("Unable to increment version number.....aborting");
+        }
+    }
+
     //Only to be called from DatabaseEngine cleanup
     public void restartReplicaThreads() throws Exception {
         //Reset all the parameters
@@ -109,7 +154,7 @@ public class ReplicaAwareWriteAheadLog {
             cleanupSignal.getAndSet(false);
             countRunningReplicaThreads.getAndSet(0L);
             for (Map.Entry<String, String> entry : replicaHostVsFileName.entrySet()) {
-                startReplicaTask(entry.getKey(), entry.getValue());
+                startReplicaTask(versionNumber, entry.getKey(), entry.getValue());
             }
         }catch (Exception e){
             e.printStackTrace();
@@ -118,8 +163,8 @@ public class ReplicaAwareWriteAheadLog {
         System.out.println("Restarted the replica tasks");
     }
 
-    private void startReplicaTask(String replicaHost, String fileName){
-        SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(fileName, writeAheadFileName, replicaHost, maxBatchSize, countRunningReplicaThreads, cleanupSignal);
+    private void startReplicaTask(int versionNumber, String replicaHost, String fileName){
+        SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(versionNumber, fileName, writeAheadFileName, replicaHost, maxBatchSize, countRunningReplicaThreads, cleanupSignal);
         executorService.submit(syncReplicasRunnable);
         countRunningReplicaThreads.incrementAndGet();
     }

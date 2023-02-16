@@ -29,9 +29,11 @@ public class SyncReplicasRunnable implements Runnable{
     private int MILLIS_TO_NANOS = 1000000;
     private AtomicLong countRunningReplicaThreads;
     private AtomicBoolean cleanupSignal;
+    private int versionNumber;
 
-    public SyncReplicasRunnable(String replicaStateFileName, String writeAheadFileName, String replicaHostDetails, int maxBatchSize, AtomicLong countRunningReplicaThreads,
+    public SyncReplicasRunnable(int versionNumber, String replicaStateFileName, String writeAheadFileName, String replicaHostDetails, int maxBatchSize, AtomicLong countRunningReplicaThreads,
                                 AtomicBoolean cleanupSignal) {
+        this.versionNumber = versionNumber;
         this.replicaStateFileName = replicaStateFileName;
         this.writeAheadFileName = writeAheadFileName;
         this.maxBatchSize = maxBatchSize;
@@ -90,7 +92,7 @@ public class SyncReplicasRunnable implements Runnable{
                     System.out.println("condition met" + (collectedLines < maxBatchSize) +" line = " + line + " timeElapsed = "+ timeElapsed);
                     currentSeqNumber++;
                     endLineNumber = endLineNumber < 0 ? collectedLines : endLineNumber  + collectedLines;
-                    sendToTheReplicaHost(currentSeqNumber, endLineNumber, lines);
+                    sendToTheReplicaHost(versionNumber, currentSeqNumber, endLineNumber, lines);
                     fw.write(currentSeqNumber + Util.KEY_VALUE_DELIMITER + endLineNumber + Util.ENTRY_DELIMITER);
                     fw.flush();
                 }
@@ -114,8 +116,8 @@ public class SyncReplicasRunnable implements Runnable{
         }
     }
 
-    private void sendToTheReplicaHost(int currentSeqNumber, int endNumber, List<String> lines) {
-        ReplicaRequest replicaRequest = new ReplicaRequest(lines, currentSeqNumber, endNumber);
+    private void sendToTheReplicaHost(int versionNumber, int currentSeqNumber, int endNumber, List<String> lines) {
+        ReplicaRequest replicaRequest = new ReplicaRequest(versionNumber, lines, currentSeqNumber, endNumber);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<ReplicaRequest> request = new HttpEntity<>(replicaRequest, httpHeaders);

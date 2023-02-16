@@ -17,7 +17,8 @@ public class DatabaseApplication {
 		if(args[0].equals(ModeEnum.MASTER.name())){
 			DatabaseMode.getInstance(ModeEnum.MASTER);
 			fileName = "walMaster.log";
-			ReplicaAwareWriteAheadLog replicaAwareWriteAheadLog = ReplicaAwareWriteAheadLog.getInstance(fileName);
+			String versionFileName = "masterVersionFile.log";
+			ReplicaAwareWriteAheadLog replicaAwareWriteAheadLog = ReplicaAwareWriteAheadLog.getInstance(fileName, versionFileName);
 			DatabaseEngine.getInstance(replicaAwareWriteAheadLog);
 		}
 		else{

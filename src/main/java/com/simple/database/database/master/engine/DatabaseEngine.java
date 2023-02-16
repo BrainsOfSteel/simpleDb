@@ -55,11 +55,11 @@ public class DatabaseEngine implements StateReloader{
     }
 
     private String getAddKey(String op, String key, String value){
-        return op+Util.KEY_VALUE_DELIMITER+ key +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
+        return replicaAwareWriteAheadLog.getVersionNumber() + Util.KEY_VALUE_DELIMITER + op+Util.KEY_VALUE_DELIMITER+ key +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     private String getDelKey(String op, String key){
-        return op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
+        return replicaAwareWriteAheadLog.getVersionNumber() + op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     public synchronized void cleanupWriteAheadLog() throws Exception{
@@ -84,6 +84,7 @@ public class DatabaseEngine implements StateReloader{
         try {
             replicaAwareWriteAheadLog.stopReplicaThreadsAndCleanup();
             Files.move(Path.of(walTempFile), Path.of(replicaAwareWriteAheadLog.getWriteAheadFileName()), ATOMIC_MOVE);
+            replicaAwareWriteAheadLog.incrementVersionNumber();
             replicaAwareWriteAheadLog.restartReplicaThreads();
         }catch (Exception e){
             e.printStackTrace();

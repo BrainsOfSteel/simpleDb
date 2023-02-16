@@ -2,14 +2,24 @@ package com.simple.database.database.replica.request;
 
 import java.util.List;
 public class ReplicaRequest {
+    private int versionNumber;
     private List<String> walLines;
     private int sequenceNumber;
     private int endLineNumber;
 
-    public ReplicaRequest(List<String> walLines, int sequenceNumber, int endLineNumber) {
+    public ReplicaRequest(int versionNumber, List<String> walLines, int sequenceNumber, int endLineNumber) {
         this.walLines = walLines;
         this.sequenceNumber = sequenceNumber;
         this.endLineNumber = endLineNumber;
+        this.versionNumber = versionNumber;
+    }
+
+    public int getVersionNumber() {
+        return versionNumber;
+    }
+
+    public void setVersionNumber(int versionNumber) {
+        this.versionNumber = versionNumber;
     }
 
     public List<String> getWalLines() {
