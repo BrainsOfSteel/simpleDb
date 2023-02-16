@@ -58,7 +58,7 @@ public class ReplicaAwareWriteAheadLog {
 
     public void appendToWal(String key){
         try{
-            fileWriter.write(key + Util.ENTRY_DELIMITER);
+            fileWriter.write(key);
             fileWriter.flush();
         }catch(Exception e){
             System.out.println("Unable to append to WAL....exiting");
@@ -115,6 +115,7 @@ public class ReplicaAwareWriteAheadLog {
             e.printStackTrace();
             throw new Exception("Unable to clean restart the write ahead log writer will abort");
         }
+        System.out.println("Restarted the replica tasks");
     }
 
     private void startReplicaTask(String replicaHost, String fileName){

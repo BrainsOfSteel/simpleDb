@@ -55,11 +55,11 @@ public class DatabaseEngine implements StateReloader{
     }
 
     private String getAddKey(String op, String key, String value){
-        return op+Util.KEY_VALUE_DELIMITER+ key +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER;
+        return op+Util.KEY_VALUE_DELIMITER+ key +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     private String getDelKey(String op, String key){
-        return op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER;
+        return op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     public synchronized void cleanupWriteAheadLog() throws Exception{
@@ -67,7 +67,7 @@ public class DatabaseEngine implements StateReloader{
         try(FileWriter fw = new FileWriter(walTempFile)){
             for(Map.Entry<String, String> entry : keyValuePair.entrySet()){
                 String appendLogLine = getAddKey(Util.ADD_OPERATION, entry.getKey(), entry.getValue());
-                fw.write(appendLogLine + Util.ENTRY_DELIMITER);
+                fw.write(appendLogLine);
                 fw.flush();
             }
         }catch (Exception e){
