@@ -1,15 +1,15 @@
 package com.simple.database.database.master.engine;
 
+import com.simple.database.database.StateReloader;
+import com.simple.database.database.master.ReplicaAwareWriteAheadLog;
+import com.simple.database.database.utils.Util;
+
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.simple.database.database.master.ReplicaAwareWriteAheadLog;
-import com.simple.database.database.StateReloader;
-import com.simple.database.database.utils.Util;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
 public class DatabaseEngine implements StateReloader{
@@ -95,5 +95,16 @@ public class DatabaseEngine implements StateReloader{
 
     public String getValue(String key){
         return keyValuePair.get(key);        
+    }
+
+    public synchronized void createSnapshot(String fileName) throws Exception{
+        try(FileWriter fw = new FileWriter(fileName)){
+            for(Map.Entry<String, String> entry: keyValuePair.entrySet()){
+                fw.write(getAddKey(Util.ADD_OPERATION, entry.getKey(), entry.getValue()));
+            }
+            fw.flush();
+        }catch (Exception e){
+            throw e;
+        }
     }
 }

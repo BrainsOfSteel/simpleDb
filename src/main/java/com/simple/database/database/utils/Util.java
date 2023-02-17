@@ -13,12 +13,12 @@ public class Util {
         String[] line = logLine.split(KEY_VALUE_DELIMITER);
         if(line[line.length-1].charAt(0) == CHECKSUM_CHARACTER ){
             if(line[1].equals(ADD_OPERATION)){
-                String key = line[1];
-                String value = line[2];
+                String key = line[2];
+                String value = line[3];
                 keyValuePair.put(key, value);
             }
             else if(line[1].equals(DEL_OPERATION)){
-                String key = line[1];
+                String key = line[2];
                 if(!keyValuePair.containsKey(key)){
                     System.out.println("Key not found in DB. why ? "+ logLine +" key = "+key);
                 }
