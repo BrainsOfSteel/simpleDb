@@ -55,40 +55,30 @@ public class DatabaseEngine implements StateReloader{
     }
 
     private String getAddKey(String op, String key, String value){
-        return replicaAwareWriteAheadLog.getVersionNumber() + Util.KEY_VALUE_DELIMITER + op+Util.KEY_VALUE_DELIMITER+ key +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
+        return replicaAwareWriteAheadLog.getVersionNumber() + Util.KEY_VALUE_DELIMITER + op+Util.KEY_VALUE_DELIMITER+ key
+                +Util.KEY_VALUE_DELIMITER + value  + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     private String getDelKey(String op, String key){
-        return replicaAwareWriteAheadLog.getVersionNumber() + op + Util.KEY_VALUE_DELIMITER + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
+        return replicaAwareWriteAheadLog.getVersionNumber() + Util.KEY_VALUE_DELIMITER + op + Util.KEY_VALUE_DELIMITER
+                + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
     public synchronized void cleanupWriteAheadLog() throws Exception{
         String walTempFile = "walMasterTemp.log";
-        try(FileWriter fw = new FileWriter(walTempFile)){
+        try(FileWriter fw = new FileWriter(walTempFile)) {
+            replicaAwareWriteAheadLog.incrementVersionNumber();
             for(Map.Entry<String, String> entry : keyValuePair.entrySet()){
                 String appendLogLine = getAddKey(Util.ADD_OPERATION, entry.getKey(), entry.getValue());
                 fw.write(appendLogLine);
                 fw.flush();
             }
-        }catch (Exception e){
-            e.printStackTrace();
-            try {
-                Files.deleteIfExists(Path.of(walTempFile));
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-            throw new Exception("Unable to create new journal file");
-        }
-
-        //Everything below is non-recoverable, shutdown the database and do manual cleanup
-        try {
             replicaAwareWriteAheadLog.stopReplicaThreadsAndCleanup();
             Files.move(Path.of(walTempFile), Path.of(replicaAwareWriteAheadLog.getWriteAheadFileName()), ATOMIC_MOVE);
-            replicaAwareWriteAheadLog.incrementVersionNumber();
             replicaAwareWriteAheadLog.restartReplicaThreads();
-        }catch (Exception e){
+        }catch(Exception e){
             e.printStackTrace();
-            System.out.println("Something bad has happened, irrecoverable failure, manually clean up the walLogs an restart the application");
+            System.out.println("Something bad has happened, irrecoverable failure, manually clean up the walLogs and restart the application or use snapshotted database to work");
             System.exit(0);
         }
     }

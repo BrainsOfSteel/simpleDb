@@ -20,7 +20,6 @@ public class ReplicaAwareWriteAheadLog {
     private String writeAheadFileName;
     private static ReplicaAwareWriteAheadLog replicaAwareWriteAheadLog;
     private FileWriter fileWriter;
-    private FileWriter versionFileWriter;
     private ConcurrentHashMap<String, String> replicaHostVsFileName = new ConcurrentHashMap<>();
     private final int maxBatchSize = 10;
     private AtomicLong countRunningReplicaThreads = new AtomicLong(0);
@@ -44,6 +43,10 @@ public class ReplicaAwareWriteAheadLog {
         return versionNumber;
     }
 
+    private String generateVersionNumberString(){
+       return  "" + versionNumber+ ""+ Util.CHECKSUM_CHARACTER+ "" + Util.ENTRY_DELIMITER;
+    }
+
     private void initialiseVersionNumber() throws Exception{
         String line = null;
         if(Files.exists(Path.of(versionFileName))){
@@ -60,7 +63,7 @@ public class ReplicaAwareWriteAheadLog {
         else{
             try(FileWriter fileWriter = new FileWriter(versionFileName)){
                 versionNumber = 0;
-                fileWriter.write(versionNumber+Util.CHECKSUM_CHARACTER+Util.ENTRY_DELIMITER);
+                fileWriter.write(generateVersionNumberString());
                 fileWriter.flush();
             }catch (Exception e){
                 e.printStackTrace();
@@ -138,7 +141,7 @@ public class ReplicaAwareWriteAheadLog {
     public void incrementVersionNumber() throws Exception{
         try(FileWriter fw = new FileWriter(versionFileName)){
             versionNumber++;
-            fw.write(versionNumber + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER);
+            fw.write(generateVersionNumberString());
             fw.flush();
         }catch (Exception e){
             e.printStackTrace();

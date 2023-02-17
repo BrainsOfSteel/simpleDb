@@ -92,4 +92,20 @@ public class MainController {
         
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @GetMapping("/delKeyGet/{key}")
+    public ResponseEntity<?> addKeyTempFunction(@PathVariable("key") String key){
+        if(databaseMode.getModeEnum() == ModeEnum.REPLICA){
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        try{
+            databaseService.delKey(key);
+        }catch(Exception e){
+            e.printStackTrace();
+            return new ResponseEntity<>(e.getCause(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }
