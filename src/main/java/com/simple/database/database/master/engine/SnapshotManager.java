@@ -46,10 +46,12 @@ public class SnapshotManager implements InitializingBean {
             }
         }
         else{
+            //When the database starts it checks for file state and checksums. In case of errors it aborts
             try(BufferedReader br = new BufferedReader(new FileReader(snapshotListFileName))){
                 String line = null;
                 while((line = br.readLine()) != null){
                     if(!line.contains(""+Util.CHECKSUM_CHARACTER)){
+                        hasSnapListNameFileCorrupted.getAndSet(true);
                         System.out.println("snapshot list corrupted");
                         break;
                     }
@@ -78,11 +80,12 @@ public class SnapshotManager implements InitializingBean {
     private Runnable createSnapshotsAndPersist(){
         return () -> {
             synchronized(this){
+                //This will not survive the reload. Need to read from persistent store -enhancement
                 if(hasSnapListNameFileCorrupted.get()){
                     System.out.println("Snapshot list file has corrupted.....new snapshots will not created until fixed....fixing to be added soon");
                     return;
                 }
-                String fileName = snapshotPrefix + System.currentTimeMillis() +".log";
+                 String fileName = snapshotPrefix + System.currentTimeMillis() +".log";
                 try{
                     databaseEngine.createSnapshot(fileName);
                 }catch (Exception e){

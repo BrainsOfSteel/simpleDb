@@ -36,5 +36,5 @@ walReplica.log
 m2Repository
 .mvn
 wal*
-snapshot_*
+snapshot*
 temp.log

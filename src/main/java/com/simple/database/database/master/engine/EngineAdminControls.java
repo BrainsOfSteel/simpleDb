@@ -13,9 +13,10 @@ public class EngineAdminControls {
 
     //any other way to stop the data base will result
     public void cleanStopDatabase(){
-        //acquire lock for database engine
-        synchronized(databaseEngine){
-            synchronized(snapshotManager){
+        //acquire lock for database engine and snapshot manager
+        //keep this order same otherwise deadlock -> lock(snapshot manager) -> lock(databaseEngine)
+        synchronized(snapshotManager){
+            synchronized(databaseEngine){
                 databaseEngine.stopDatabaseEngine();
                 snapshotManager.stopSnapshots();
                 System.out.println("Database shutdown completed");
