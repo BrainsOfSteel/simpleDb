@@ -128,15 +128,17 @@ public class ReplicaAwareWriteAheadLog {
                 System.out.println("waiting for replica threads to");
             }
         }
+
+        System.out.println("Stopped replica threads");
         try{
             fileWriter.flush();
-            fileWriter.close();
         }catch(Exception e){
             e.printStackTrace();
         }
         finally{
             try {
                 fileWriter.close();
+                System.out.println("Closing the file : " + writeAheadFileName);
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -13,11 +13,14 @@ public class EngineAdminControls {
 
     //any other way to stop the data base will result
     public void cleanStopDatabase(){
-        databaseEngine.stopDatabaseEngine();
-        snapshotManager.stopSnapshots();
-        System.out.println("Database shutdown completed");
-        System.exit(0);
-    }
-    
-        
+        //acquire lock for database engine
+        synchronized(databaseEngine){
+            synchronized(snapshotManager){
+                databaseEngine.stopDatabaseEngine();
+                snapshotManager.stopSnapshots();
+                System.out.println("Database shutdown completed");
+                System.exit(0);
+            }
+        }
+    }       
 }

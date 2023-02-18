@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.simple.database.database.master.engine.EngineAdminControls;
 import com.simple.database.database.mode.DatabaseMode;
 import com.simple.database.database.mode.ModeEnum;
 import com.simple.database.database.request.AddRequest;
@@ -21,6 +22,9 @@ public class MainController {
     
     @Autowired
     private DatabaseService databaseService;
+
+    @Autowired
+    private EngineAdminControls engineAdminControls;
 
     private DatabaseMode databaseMode = DatabaseMode.getInstance();
 
@@ -108,4 +112,15 @@ public class MainController {
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @GetMapping("/stopDatabase")
+    public ResponseEntity<?> stopDatabase(){
+        if(databaseMode.getModeEnum() == ModeEnum.REPLICA){
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
+
+        engineAdminControls.cleanStopDatabase();
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
 }
