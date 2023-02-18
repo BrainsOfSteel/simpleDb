@@ -71,7 +71,7 @@ public class SnapshotManager implements InitializingBean {
             ///stop the database engine
             executorService.shutdown();
             System.out.println("Snapshot manager shutdown completed");
-            //dummy commit
+            //dummy commit2
         }
     }
 
