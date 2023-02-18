@@ -49,7 +49,8 @@ public class ReplicaRequest {
     @Override
     public String toString() {
         return "ReplicaRequest{" +
-                "walLines=" + walLines +
+                "versionNumber=" + versionNumber +
+                ", walLines=" + walLines + "\n" +
                 ", sequenceNumber=" + sequenceNumber +
                 ", endLineNumber=" + endLineNumber +
                 '}';

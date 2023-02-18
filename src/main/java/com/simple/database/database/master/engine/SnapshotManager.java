@@ -1,5 +1,7 @@
 package com.simple.database.database.master.engine;
 
+import com.simple.database.database.mode.DatabaseMode;
+import com.simple.database.database.mode.ModeEnum;
 import com.simple.database.database.utils.Util;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,12 @@ public class SnapshotManager implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
+        DatabaseMode databaseMode = DatabaseMode.getInstance();
+        if(databaseMode.getModeEnum() != ModeEnum.MASTER){
+            System.out.println("Database snapshot disabled for replica");
+            return;
+        }
+
         System.out.println("Starting snapshot manager");
         if(!Files.exists(Path.of(snapshotListFileName))){
             try(FileWriter fw = new FileWriter(snapshotListFileName)){}
@@ -55,14 +63,14 @@ public class SnapshotManager implements InitializingBean {
             }
         }
         System.out.println("Starting snapshot manager scheduler");
-        executorService.scheduleAtFixedRate(createSnapshotsAndPersist(), 0, 20, TimeUnit.SECONDS);
+        executorService.scheduleAtFixedRate(createSnapshotsAndPersist(), 0, 1, TimeUnit.HOURS);
     }
 
     public void stopSnapshots(){
         synchronized(this){
             ///stop the database engine
             executorService.shutdown();
-            System.out.println("Snapshot shutdown completed");
+            System.out.println("Snapshot manager shutdown completed");
         }
     }
 
@@ -73,7 +81,7 @@ public class SnapshotManager implements InitializingBean {
                     System.out.println("Snapshot list file has corrupted.....new snapshots will not created until fixed....fixing to be added soon");
                     return;
                 }
-                String fileName = snapshotPrefix + System.currentTimeMillis();
+                String fileName = snapshotPrefix + System.currentTimeMillis() +".log";
                 try{
                     databaseEngine.createSnapshot(fileName);
                 }catch (Exception e){

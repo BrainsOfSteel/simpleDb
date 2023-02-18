@@ -30,7 +30,7 @@ public class ReplicaController {
     }
 
     @PostMapping(value = "/replica/addKey", consumes = "application/json")
-    public ResponseEntity<?> addKey(@RequestBody AddRequest request){
+    public ResponseEntity<?> addKey(@RequestBody ReplicaRequest request){
         if(databaseMode.getModeEnum() != ModeEnum.REPLICA){
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }

@@ -130,6 +130,7 @@ public class SyncReplicasRunnable implements Runnable{
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<ReplicaRequest> request = new HttpEntity<>(replicaRequest, httpHeaders);
+        System.out.println("---calling replicaEndPoints----" + replicaEndPointDetails);
         restTemplate.postForObject(replicaEndPointDetails, request, String.class);
         System.out.println("seqNumber =" + currentSeqNumber + " endNumber = "+endNumber + " size =" + lines.size() + " lines = " + lines);
     }
