@@ -58,45 +58,55 @@ public class SnapshotManager implements InitializingBean {
         executorService.scheduleAtFixedRate(createSnapshotsAndPersist(), 0, 20, TimeUnit.SECONDS);
     }
 
+    public void stopSnapshots(){
+        synchronized(this){
+            ///stop the database engine
+            executorService.shutdown();
+            System.out.println("Snapshot shutdown completed");
+        }
+    }
+
     private Runnable createSnapshotsAndPersist(){
         return () -> {
-            if(hasSnapListNameFileCorrupted.get()){
-                System.out.println("Snapshot list file has corrupted.....new snapshots will not created until fixed....fixing to be added soon");
-                return;
-            }
-            String fileName = snapshotPrefix + System.currentTimeMillis();
-            try{
-                databaseEngine.createSnapshot(fileName);
-            }catch (Exception e){
-                e.printStackTrace();
-                System.out.println("Unable to create snapshot...Will not perform other operations");
-                return;
-            }
+            synchronized(this){
+                if(hasSnapListNameFileCorrupted.get()){
+                    System.out.println("Snapshot list file has corrupted.....new snapshots will not created until fixed....fixing to be added soon");
+                    return;
+                }
+                String fileName = snapshotPrefix + System.currentTimeMillis();
+                try{
+                    databaseEngine.createSnapshot(fileName);
+                }catch (Exception e){
+                    e.printStackTrace();
+                    System.out.println("Unable to create snapshot...Will not perform other operations");
+                    return;
+                }
 
-            try {
-                if(snapshotNames.size() < maxSnapshotCount){
-                    snapshotNames.add(fileName);
+                try {
+                    if(snapshotNames.size() < maxSnapshotCount){
+                        snapshotNames.add(fileName);
+                    }
+                    else{
+                        String fileToDelete = snapshotNames.get(0);
+                        snapshotNames.remove(0);
+                        snapshotNames.add(fileName);
+                        //If the snapshot is not deleted, then it will stay but will not be recorded in the snapshot list name
+                        Files.deleteIfExists(Path.of(fileToDelete));
+                    }
+                }catch (Exception e){
+                    e.printStackTrace();
+                    System.out.println("Unable to delete the previous snapshot file....but this will not be recorded as the file in snapshot versions");
                 }
-                else{
-                    String fileToDelete = snapshotNames.get(0);
-                    snapshotNames.remove(0);
-                    snapshotNames.add(fileName);
-                    //If the snapshot is not deleted, then it will stay but will not be recorded in the snapshot list name
-                    Files.deleteIfExists(Path.of(fileToDelete));
+                try(FileWriter fileWriter = new FileWriter(snapshotListFileName)){
+                    for(String fName : snapshotNames){
+                        fileWriter.write(fName+Util.CHECKSUM_CHARACTER+Util.ENTRY_DELIMITER);
+                    }
+                    fileWriter.flush();
+                }catch (Exception e){
+                    System.out.println("inconsistent state of file manager.....manual intervention required to clean. Not a catastrophic failure");
+                    hasSnapListNameFileCorrupted.getAndSet(true);
+                    e.printStackTrace();
                 }
-            }catch (Exception e){
-                e.printStackTrace();
-                System.out.println("Unable to delete the previous snapshot file....but this will not be recorded as the file in snapshot versions");
-            }
-            try(FileWriter fileWriter = new FileWriter(snapshotListFileName)){
-                for(String fName : snapshotNames){
-                    fileWriter.write(fName+Util.CHECKSUM_CHARACTER+Util.ENTRY_DELIMITER);
-                }
-                fileWriter.flush();
-            }catch (Exception e){
-                System.out.println("inconsistent state of file manager.....manual intervention required to clean. Not a catastrophic failure");
-                hasSnapListNameFileCorrupted.getAndSet(true);
-                e.printStackTrace();
             }
         };
     }
