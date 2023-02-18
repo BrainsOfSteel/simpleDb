@@ -27,6 +27,7 @@ public class ReplicaAwareWriteAheadLog {
     private ExecutorService executorService;
     private String versionFileName;
     private int versionNumber;
+    private AtomicBoolean stopSignal = new AtomicBoolean(false);
 
     //Todo: Added to make sure that it does not interfere with the cleanup of WAL
     public void addReplica(String replicaHost, String fileName){
@@ -117,6 +118,31 @@ public class ReplicaAwareWriteAheadLog {
         }
       }
 
+
+    public void stopReplicaThreadsAndCloseWalFileWriter(){
+        stopSignal.getAndSet(true);
+        long count = -1;
+        while(countRunningReplicaThreads.get() > 0){
+            count++;
+            if(count % 200 == 0){
+                System.out.println("waiting for replica threads to");
+            }
+        }
+        try{
+            fileWriter.flush();
+            fileWriter.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        finally{
+            try {
+                fileWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     //Only to be called from DatabaseEngine cleanup
     public void stopReplicaThreadsAndCleanup() throws Exception {
         cleanupSignal.getAndSet(true);
@@ -167,7 +193,8 @@ public class ReplicaAwareWriteAheadLog {
     }
 
     private void startReplicaTask(int versionNumber, String replicaHost, String fileName){
-        SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(versionNumber, fileName, writeAheadFileName, replicaHost, maxBatchSize, countRunningReplicaThreads, cleanupSignal);
+        SyncReplicasRunnable syncReplicasRunnable = new SyncReplicasRunnable(versionNumber, fileName, writeAheadFileName, 
+                                                            replicaHost, maxBatchSize, countRunningReplicaThreads, cleanupSignal, stopSignal);
         executorService.submit(syncReplicasRunnable);
         countRunningReplicaThreads.incrementAndGet();
     }
