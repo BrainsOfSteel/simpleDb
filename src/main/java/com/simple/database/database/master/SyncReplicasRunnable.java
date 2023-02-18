@@ -30,9 +30,10 @@ public class SyncReplicasRunnable implements Runnable{
     private AtomicLong countRunningReplicaThreads;
     private AtomicBoolean cleanupSignal;
     private int versionNumber;
+    private AtomicBoolean stopSignal;
 
     public SyncReplicasRunnable(int versionNumber, String replicaStateFileName, String writeAheadFileName, String replicaHostDetails, int maxBatchSize, AtomicLong countRunningReplicaThreads,
-                                AtomicBoolean cleanupSignal) {
+                                AtomicBoolean cleanupSignal, AtomicBoolean stopSignal) {
         this.versionNumber = versionNumber;
         this.replicaStateFileName = replicaStateFileName;
         this.writeAheadFileName = writeAheadFileName;
@@ -41,6 +42,7 @@ public class SyncReplicasRunnable implements Runnable{
         this.replicaEndPointDetails = replicaHostDetails;
         this.countRunningReplicaThreads = countRunningReplicaThreads;
         this.cleanupSignal = cleanupSignal;
+        this.stopSignal = stopSignal;
     }
 
     @Override
@@ -69,11 +71,18 @@ public class SyncReplicasRunnable implements Runnable{
                 }
 
                 while (true) {
+                    //These signals are serialized and will not be received simultaneously
                     if(cleanupSignal.get()){
                         cleanupSignalReceived = true;
                         System.out.println("Stopping this thread " + Thread.currentThread().getName() + " for clean up of WAL of master");
                         break;
                     }
+
+                    if(stopSignal.get()){
+                        System.out.println("Stop Signal received...Stopping the replica threads");
+                        break;
+                    }
+                    
                     List<String> lines = new ArrayList<>();
                     int collectedLines = 0;
                     boolean flag = false;

@@ -64,6 +64,11 @@ public class DatabaseEngine implements StateReloader{
                 + key + Util.KEY_VALUE_DELIMITER + Util.CHECKSUM_CHARACTER + Util.ENTRY_DELIMITER;
     }
 
+    public synchronized void stopDatabaseEngine(){
+        //stop the replica threads
+        replicaAwareWriteAheadLog.stopReplicaThreadsAndCloseWalFileWriter();     
+    }
+
     public synchronized void cleanupWriteAheadLog() throws Exception{
         String walTempFile = "walMasterTemp.log";
         try(FileWriter fw = new FileWriter(walTempFile)) {
