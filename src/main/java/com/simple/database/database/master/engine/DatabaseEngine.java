@@ -37,7 +37,7 @@ public class DatabaseEngine implements StateReloader{
     }
 
     public void reloadState(String logLine){
-        Util.reloadState(logLine, keyValuePair);
+        Util.loadStateFromLogLine(logLine, keyValuePair);
     }
 
     public static DatabaseEngine getInstance(){

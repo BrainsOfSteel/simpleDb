@@ -8,8 +8,9 @@ public class Util {
     public final static String ADD_OPERATION = "ADD";
     public final static String DEL_OPERATION = "DEL";
     public final static char CHECKSUM_CHARACTER = '\u0001';
+    public final static String UNIT_TEST = "unit_test";
 
-    public static void reloadState(String logLine, ConcurrentHashMap<String, String> keyValuePair){
+    public static void loadStateFromLogLine(String logLine, ConcurrentHashMap<String, String> keyValuePair){
         String[] line = logLine.split(KEY_VALUE_DELIMITER);
         if(line[line.length-1].charAt(0) == CHECKSUM_CHARACTER ){
             if(line[1].equals(ADD_OPERATION)){
