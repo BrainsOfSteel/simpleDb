@@ -3,6 +3,7 @@ import com.simple.database.database.StateReloader;
 import com.simple.database.database.utils.Util;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class LogAwareWriteAheadReader {
@@ -47,6 +48,44 @@ public class LogAwareWriteAheadReader {
         }
     }
 
+    //add logic to survive the database crash
+    public void reloadStateFromBlockCommitFile(StateReloader state){
+        boolean isStartFound = false;
+        try(BufferedReader reader = new BufferedReader(new FileReader(walFileName))){
+            String line = null;
+            List<String> collectedLines = new ArrayList<>();
+            while((line = reader.readLine())!=null){
+                if(Util.BLOCK_START.equals(line)){
+                    if(isStartFound){
+                        collectedLines.clear();
+                    }
+                    else {
+                        isStartFound = true;
+                    }
+                }
+                else if(Util.BLOCK_END.equals(line)){
+                    if(isStartFound){
+                        state.reloadBulkState(collectedLines);
+                        isStartFound = false;
+                        collectedLines.clear();
+                    }
+                    else{
+                        collectedLines.clear();
+                    }
+                }
+                else{
+                    if(isStartFound){
+                        collectedLines.add(line);
+                    }
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            System.out.println("Unable to load replica state during boot");
+            System.exit(0);
+        }
+    }
+
     public void reloadStateFromFile(StateReloader stateReloader) {
         try(BufferedReader reader = new BufferedReader(new FileReader(walFileName))){
             String line = null;
@@ -62,9 +101,8 @@ public class LogAwareWriteAheadReader {
 
     public void appendToWal(List<String> walLines) {
         try {
-            for (String walLine : walLines) {
-                fileWriter.write(walLine);
-            }
+            String blockString = generateBlock(walLines);
+            fileWriter.write(blockString);
             fileWriter.flush();
         }catch (Exception e){
             e.printStackTrace();
@@ -76,5 +114,15 @@ public class LogAwareWriteAheadReader {
             System.out.println("error while appending to write ahead log file....aborting");
             System.exit(0);
         }
+    }
+
+    private String generateBlock(List<String> walLines) {
+        StringBuilder sb = new StringBuilder("");
+        sb.append(Util.BLOCK_START).append(Util.ENTRY_DELIMITER);
+        for(String walLine: walLines){
+            sb.append(walLine);
+        }
+        sb.append(Util.BLOCK_END).append(Util.ENTRY_DELIMITER);
+        return sb.toString();
     }
 }

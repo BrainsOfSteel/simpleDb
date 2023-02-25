@@ -10,9 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 class DatabaseEngineTest {
-
     private static String walReplicaFileName = "src/test/walReplica.txt";
-
     @Test
     void walLogsFromMasterSkipMessages() throws Exception{
         String walReplicaFileName = "src/test/walReplica.txt";
@@ -78,6 +76,18 @@ class DatabaseEngineTest {
         finally {
             logAwareWriteAheadReader.closeFiles();
             Files.deleteIfExists(Path.of(walReplicaFileName));
+        }
+    }
+
+    @Test
+    void reloadStateFromCommitFile() throws Exception{
+        try{
+            LogAwareWriteAheadReader logAwareWriteAheadReader = LogAwareWriteAheadReader.getTestInstance("src/test/resources/testCommitFile.txt");
+            DatabaseEngine databaseEngine = DatabaseEngine.getTestInstance(logAwareWriteAheadReader);
+            assert(databaseEngine.getKeySetSize() == 10);
+        }catch (Exception e){
+            e.printStackTrace();
+            throw e;
         }
     }
 

@@ -9,6 +9,8 @@ public class Util {
     public final static String DEL_OPERATION = "DEL";
     public final static char CHECKSUM_CHARACTER = '\u0001';
     public final static String UNIT_TEST = "unit_test";
+    public final static String BLOCK_START =  "**START BLOCK**" + CHECKSUM_CHARACTER;
+    public final static String BLOCK_END = "**END BLOCK**" + CHECKSUM_CHARACTER;
 
     public static void loadStateFromLogLine(String logLine, ConcurrentHashMap<String, String> keyValuePair){
         String[] line = logLine.split(KEY_VALUE_DELIMITER);
@@ -33,6 +35,15 @@ public class Util {
         }
         else{
             System.out.println("invalid checksum in line....skipping line = " + logLine);
+        }
+    }
+
+    public static boolean isValid(String line) {
+        if(line.charAt(line.length()-1) == Util.CHECKSUM_CHARACTER){
+            return true;
+        }
+        else{
+            return false;
         }
     }
 }

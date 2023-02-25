@@ -31,7 +31,7 @@ public class DatabaseEngine implements StateReloader {
         if(databaseEngine == null){
             databaseEngine = new DatabaseEngine(logAwareWriteAheadReader);
         }
-        logAwareWriteAheadReader.reloadStateFromFile(databaseEngine);
+        logAwareWriteAheadReader.reloadStateFromBlockCommitFile(databaseEngine);
         return databaseEngine;
     }
 
@@ -39,6 +39,7 @@ public class DatabaseEngine implements StateReloader {
         String testType = System.getenv("testType");
         if(Util.UNIT_TEST.equals(testType)) {
             databaseEngine = new DatabaseEngine(logAwareWriteAheadReader);
+            logAwareWriteAheadReader.reloadStateFromBlockCommitFile(databaseEngine);
             return databaseEngine;
         }
         throw new Exception("Invalid operation");
@@ -82,6 +83,7 @@ public class DatabaseEngine implements StateReloader {
             //reset the bufferedMessages
             latestVersionNumber = versionNumber;
             bufferedMessages.clear();
+            keyValuePair.clear();
             currentSequenceNumber = 0;
             walLogsFromMaster(versionNumber, walLines, sequenceNumber, endLineNumber);
         }
